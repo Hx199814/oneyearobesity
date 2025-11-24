@@ -3,10 +3,9 @@ import joblib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib import font_manager
 
 # -------------------------- 基础优化：减少重复计算 + 资源缓存 --------------------------
-# 页面配置（精简参数，提升加载速度）
+# 页面配置
 st.set_page_config(
     page_title="学生肥胖风险预测系统",
     page_icon="📊",
@@ -14,14 +13,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 加载模型（缓存优化，仅加载一次）
+# 加载模型（缓存优化）
 @st.cache_resource(show_spinner=False)
 def load_model():
     return joblib.load('CatBoost.pkl')
 
 model = load_model()
 
-# 优化BMI基线判断：用字典映射替代大量if-elif，提升计算速度
+# 优化BMI基线判断：用字典映射替代大量if-elif
 BMI_THRESHOLDS = {
     (6, 6.5): {'male': 17.7, 'female': 17.5},
     (6.5, 7): {'male': 18.1, 'female': 18.0},
@@ -55,13 +54,13 @@ def calculate_baseline_obesity(age, gender, height_cm, weight_kg):
     bmi = weight_kg / (height_m ** 2)
     gender_key = 'male' if gender == 1 else 'female'
     
-    # 快速匹配年龄区间（替代if-elif）
+    # 快速匹配年龄区间
     for (min_age, max_age), thresholds in BMI_THRESHOLDS.items():
         if min_age <= age < max_age:
             return 1 if bmi >= thresholds[gender_key] else 0
     return 0
 
-# -------------------------- 特征选项定义（保留原变量，仅优化格式） --------------------------
+# -------------------------- 特征选项定义（保留原变量） --------------------------
 GENDER_options = {1: '男生', 2: '女生'}
 D2_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
 D1_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
@@ -76,7 +75,7 @@ FF_options = {1: '是', 0: '否'}
 D3_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
 PPP_options = {1: '是', 0: '否'}
 
-# -------------------------- 高级UI样式（替换幼稚图标，提升专业感） --------------------------
+# -------------------------- 高级UI样式 --------------------------
 st.markdown("""
 <style>
     /* 全局样式重置 */
@@ -224,15 +223,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------------- 主页面布局（优化排版，提升专业感） --------------------------
-# 主标题（替换幼稚图标）
+# -------------------------- 主页面布局 --------------------------
+# 主标题
 st.markdown('<h1 class="main-header">📊 学生肥胖风险预测系统</h1>', unsafe_allow_html=True)
 
-# 侧边栏（优化分组标题，替换图标，精简布局）
+# 侧边栏
 with st.sidebar:
     st.markdown('<h2 class="sidebar-header">学生信息录入</h2>', unsafe_allow_html=True)
     
-    # 基本信息（用Font Awesome图标替代emoji，更专业）
+    # 基本信息
     st.markdown("""
     <div class="sidebar-group-title">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -264,17 +263,18 @@ with st.sidebar:
     with col2:
         weight_kg = st.number_input("体重 (kg)", min_value=20.0, max_value=100.0, value=45.0, step=0.1)
     
-    # 实时计算BMI和基线肥胖状态（缓存计算结果）
-    @st.cache_data(depends_on=[AGE, GENDER, height_cm, weight_kg])
-    def compute_bmi_and_baseline():
+    # 实时计算BMI和基线肥胖状态（修正：删除depends_on，显式传参）
+    @st.cache_data
+    def compute_bmi_and_baseline(age, gender, height_cm, weight_kg):
         height_m = height_cm / 100
         bmi = weight_kg / (height_m ** 2)
-        baseline = calculate_baseline_obesity(AGE, GENDER, height_cm, weight_kg)
+        baseline = calculate_baseline_obesity(age, gender, height_cm, weight_kg)
         return bmi, baseline
     
-    bmi, baseline_obesity = compute_bmi_and_baseline()
+    # 调用计算函数（传入必要参数）
+    bmi, baseline_obesity = compute_bmi_and_baseline(AGE, GENDER, height_cm, weight_kg)
     
-    # 显示BMI和基线状态（卡片式设计）
+    # 显示BMI和基线状态
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(f"""
@@ -341,7 +341,7 @@ with st.sidebar:
     FF = st.selectbox("过去12个月里是否与他人动手打架", options=list(FF_options.keys()), format_func=lambda x: FF_options[x])
     PPP = st.selectbox("过去30天是否曾被家长打骂", options=list(PPP_options.keys()), format_func=lambda x: PPP_options[x])
 
-# -------------------------- 主内容区域（优化布局，移除冗余Tips） --------------------------
+# 主内容区域
 col_main, col_side = st.columns([3, 1.2])
 
 with col_main:
@@ -350,12 +350,12 @@ with col_main:
     if st.button("开始预测", type="primary"):
         with st.spinner("🔍 正在分析数据，请稍候..."):
             try:
-                # 准备特征数据（保持原逻辑）
+                # 准备特征数据
                 feature_values = [GENDER, baseline_obesity, D2, AGE, D1, D9, HU, D11, PEC, FrFF, D17, DVT, FF, D3, PPP]
                 features = np.array([feature_values])
                 
-                # 预测（缓存模型预测结果，避免重复计算）
-                @st.cache_data(depends_on=[features])
+                # 预测（缓存优化）
+                @st.cache_data
                 def predict(features):
                     pred_class = model.predict(features)[0]
                     pred_proba = model.predict_proba(features)[0]
@@ -364,7 +364,7 @@ with col_main:
                 predicted_class, predicted_proba = predict(features)
                 probability = predicted_proba[predicted_class] * 100
                 
-                # 显示预测结果（优化文案和样式）
+                # 显示预测结果
                 if predicted_class == 1:
                     st.markdown(f'''
                     <div class="prediction-box high-risk">
@@ -425,31 +425,31 @@ with col_main:
                     </div>
                     ''', unsafe_allow_html=True)
                 
-                # 可视化优化（专业配色+精简样式）
+                # 可视化优化
                 st.markdown('<h2 class="sub-header">风险概率分布</h2>', unsafe_allow_html=True)
                 
-                # 设置中文字体（避免乱码）
-                plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
+                # 设置中文字体
+                plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Arial Unicode MS']
                 plt.rcParams['axes.unicode_minus'] = False
                 
                 fig, ax = plt.subplots(figsize=(10, 4))
                 categories = ['非肥胖', '肥胖']
                 probabilities = [predicted_proba[0], predicted_proba[1]]
-                colors = ['#10b981', '#ef4444']  # 专业配色
+                colors = ['#10b981', '#ef4444']
                 
-                # 绘制条形图（优化样式）
+                # 绘制条形图
                 bars = ax.barh(categories, probabilities, color=colors, alpha=0.8, edgecolor='white', linewidth=2)
                 ax.set_xlim(0, 1.05)
                 ax.set_xlabel('概率', fontsize=12, fontweight='500', color='#2d3748')
                 ax.set_title('肥胖风险概率分布', fontsize=14, fontweight='600', color='#2d3748', pad=20)
                 
-                # 添加数值标签（优化位置和样式）
+                # 添加数值标签
                 for i, (bar, prob) in enumerate(zip(bars, probabilities)):
                     ax.text(prob + 0.01, bar.get_y() + bar.get_height()/2, 
                             f'{prob:.3f}', va='center', ha='left', 
                             fontsize=11, fontweight='500', color='#2d3748')
                 
-                # 美化图表（移除多余边框，优化网格）
+                # 美化图表
                 ax.spines['top'].set_visible(False)
                 ax.spines['right'].set_visible(False)
                 ax.spines['left'].set_color('#e2e8f0')
@@ -467,7 +467,7 @@ with col_main:
                 st.error(f"预测过程中出现错误：{str(e)}", icon="❌")
 
 with col_side:
-    # 系统说明（精简内容，提升专业感）
+    # 系统说明
     st.markdown('<h2 class="sub-header">系统说明</h2>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -497,7 +497,7 @@ with col_side:
     </div>
     """, unsafe_allow_html=True)
 
-# 页脚（精简样式）
+# 页脚
 st.markdown("""
 <div class="footer">
     <p>学生肥胖风险预测系统 © 2024 | 基于机器学习的健康风险评估工具</p>
