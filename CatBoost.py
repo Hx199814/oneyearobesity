@@ -154,7 +154,7 @@ with st.sidebar:
     with st.expander("行为与其他", expanded=False):
         HU = st.selectbox("长时间使用耳机 (>30分)", options=list(HU_options.keys()), format_func=lambda x: HU_options[x])
         FF = st.selectbox("过去12个月有打架行为", options=list(FF_options.keys()), format_func=lambda x: FF_options[x])
-        PPP = st.selectbox("近期受到严厉责罚", options=list(PPP_options.keys()), format_func=lambda x: PPP_options[x])
+        PPP = st.selectbox("过去1个月被父母打骂", options=list(PPP_options.keys()), format_func=lambda x: PPP_options[x])
 
 # --- 主页面区域 ---
 st.markdown("### 学生肥胖风险预测系统")
@@ -194,10 +194,10 @@ if st.button("开始肥胖风险预测", type="primary", use_container_width=Tru
         st.markdown('<div class="result-card">', unsafe_allow_html=True)
         if predicted_class == 1:
             st.markdown("#### 🔴 预测结果：高肥胖风险")
-            st.markdown(f"该学生一年后的肥胖风险概率为 {risk_score:.1f}%"，需及时干预")
+            st.markdown(f"该学生一年后的肥胖风险概率为 {risk_score:.1f}%，需及时干预")
         else:
             st.markdown("#### 🟢 预测结果：低肥胖风险")
-            st.markdown(f"该学生一年后的肥胖风险概率为 {risk_score:.1f}%"，风险可控")
+            st.markdown(f"该学生一年后的肥胖风险概率为 {risk_score:.1f}%，风险可控")
         st.divider()
         st.metric("肥胖风险概率", f"{risk_score:.1f}%", 
                   delta="高于临界值" if risk_score > 50 else "低于临界值",
