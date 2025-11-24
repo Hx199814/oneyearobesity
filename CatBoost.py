@@ -163,8 +163,7 @@ with st.sidebar:
 # --- 主页面区域 ---
 
 # 头部设计
-st.markdown("### 学生健康风险智能评估系统")
-st.markdown("基于 CatBoost 机器学习模型的多维度健康数据分析平台")
+st.markdown("### 学生肥胖风险智能评估系统")
 st.divider()
 
 # 预测逻辑
@@ -200,7 +199,7 @@ if st.button("开始智能分析", type="primary", use_container_width=True):
                         st.markdown("#### 🔴 评估结果：高风险")
                         st.markdown("根据模型分析，该学生存在较高的肥胖或相关健康风险。")
                         st.divider()
-                        st.metric("风险指数", f"{probability:.1f}%", delta="+高危", delta_color="inverse")
+                        st.metric("风险指数", f"{probability:.1f}%", delta_color="inverse")
                     else:
                         st.markdown("#### 🟢 评估结果：低风险")
                         st.markdown("各项指标处于相对健康范围，请继续保持良好的生活习惯。")
@@ -261,7 +260,7 @@ else:
     st.markdown("""
     <div style="text-align: center; margin-top: 50px; color: #6c757d;">
         <h4>👈 请在左侧面板输入完整信息</h4>
-        <p>点击上方按钮启动 AI 预测模型</p>
+        <p>点击上方按钮启动预测模型</p>
     </div>
     """, unsafe_allow_html=True)
 
