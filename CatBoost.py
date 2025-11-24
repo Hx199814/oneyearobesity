@@ -16,9 +16,19 @@ st.set_page_config(
 @st.cache_resource
 def load_model():
     # 第一次加载时可能需要等待，但后续交互不会重复加载
-    return joblib.load('CatBoost.pkl')
+    # 确保 'CatBoost.pkl' 文件存在于应用的根目录下
+    try:
+        return joblib.load('CatBoost.pkl')
+    except FileNotFoundError:
+        st.error("错误：未找到模型文件 'CatBoost.pkl'。请检查文件路径。")
+        return None
 
 model = load_model()
+
+# 如果模型加载失败，停止运行
+if model is None:
+    st.stop()
+
 
 # --- 定义特征选项 (保留不变) ---
 GENDER_options = {1: '男生', 2: '女生'}
@@ -40,151 +50,54 @@ def calculate_baseline_obesity(age, gender, height_cm, weight_kg):
     height_m = height_cm / 100
     bmi = weight_kg / (height_m ** 2)
     gender_code = 1 if gender == 1 else 0
-    # ... [保持原有的BMI/年龄/性别分段判断逻辑不变] ...
     
-    # 为了代码简洁，只保留一个分支作为示例，其余分支保持原代码不变
-    if age >= 6 and age < 6.5:
-        if gender_code == 1 and bmi >= 17.7:
-            return 1
-        elif gender_code == 0 and bmi >= 17.5:
-            return 1
-    elif age >= 6.5 and age < 7:
-        if gender_code == 1 and bmi >= 18.1:
-            return 1
-        elif gender_code == 0 and bmi >= 18.0:
-            return 1
-    elif age >= 7 and age < 7.5:
-        if gender_code == 1 and bmi >= 18.7:
-            return 1
-        elif gender_code == 0 and bmi >= 18.5:
-            return 1
-    elif age >= 7.5 and age < 8:
-        if gender_code == 1 and bmi >= 19.2:
-            return 1
-        elif gender_code == 0 and bmi >= 19.0:
-            return 1
-    elif age >= 8 and age < 8.5:
-        if gender_code == 1 and bmi >= 19.7:
-            return 1
-        elif gender_code == 0 and bmi >= 19.4:
-            return 1
-    elif age >= 8.5 and age < 9:
-        if gender_code == 1 and bmi >= 20.3:
-            return 1
-        elif gender_code == 0 and bmi >= 19.9:
-            return 1
-    elif age >= 9 and age < 9.5:
-        if gender_code == 1 and bmi >= 20.8:
-            return 1
-        elif gender_code == 0 and bmi >= 20.4:
-            return 1
-    elif age >= 9.5 and age < 10:
-        if gender_code == 1 and bmi >= 21.4:
-            return 1
-        elif gender_code == 0 and bmi >= 21.0:
-            return 1
-    elif age >= 10 and age < 10.5:
-        if gender_code == 1 and bmi >= 21.9:
-            return 1
-        elif gender_code == 0 and bmi >= 21.5:
-            return 1
-    elif age >= 10.5 and age < 11:
-        if gender_code == 1 and bmi >= 22.5:
-            return 1
-        elif gender_code == 0 and bmi >= 22.1:
-            return 1
-    elif age >= 11 and age < 11.5:
-        if gender_code == 1 and bmi >= 23.0:
-            return 1
-        elif gender_code == 0 and bmi >= 22.7:
-            return 1
-    elif age >= 11.5 and age < 12:
-        if gender_code == 1 and bmi >= 23.6:
-            return 1
-        elif gender_code == 0 and bmi >= 23.3:
-            return 1
-    elif age >= 12 and age < 12.5:
-        if gender_code == 1 and bmi >= 24.1:
-            return 1
-        elif gender_code == 0 and bmi >= 23.9:
-            return 1
-    elif age >= 12.5 and age < 13:
-        if gender_code == 1 and bmi >= 24.7:
-            return 1
-        elif gender_code == 0 and bmi >= 24.5:
-            return 1
-    elif age >= 13 and age < 13.5:
-        if gender_code == 1 and bmi >= 25.2:
-            return 1
-        elif gender_code == 0 and bmi >= 25.6:
-            return 1
-    elif age >= 13.5 and age < 14:
-        if gender_code == 1 and bmi >= 25.7:
-            return 1
-        elif gender_code == 0 and bmi >= 25.6:
-            return 1
-    elif age >= 14 and age < 14.5:
-        if gender_code == 1 and bmi >= 26.1:
-            return 1
-        elif gender_code == 0 and bmi >= 25.9:
-            return 1
-    elif age >= 14.5 and age < 15:
-        if gender_code == 1 and bmi >= 26.4:
-            return 1
-        elif gender_code == 0 and bmi >= 26.3:
-            return 1
-    elif age >= 15 and age < 15.5:
-        if gender_code == 1 and bmi >= 26.6:
-            return 1
-        elif gender_code == 0 and bmi >= 26.6:
-            return 1
-    elif age >= 15.5 and age < 16:
-        if gender_code == 1 and bmi >= 26.9:
-            return 1
-        elif gender_code == 0 and bmi >= 26.9:
-            return 1
-    elif age >= 16 and age < 16.5:
-        if gender_code == 1 and bmi >= 27.1:
-            return 1
-        elif gender_code == 0 and bmi >= 27.1:
-            return 1
-    elif age >= 16.5 and age < 17:
-        if gender_code == 1 and bmi >= 27.4:
-            return 1
-        elif gender_code == 0 and bmi >= 27.4:
-            return 1
-    elif age >= 17 and age < 17.5:
-        if gender_code == 1 and bmi >= 27.6:
-            return 1
-        elif gender_code == 0 and bmi >= 27.6:
-            return 1
-    elif age >= 17.5 and age < 18:
-        if gender_code == 1 and bmi >= 27.8:
-            return 1
-        elif gender_code == 0 and bmi >= 27.8:
-            return 1
-    elif age >= 18:
-        if bmi >= 28.0:
-            return 1
+    # 简化边界检查和赋值，确保返回0或1
     
+    # 临界值数据 (来自原代码)
+    thresholds = {
+        6: {1: 17.7, 0: 17.5}, 6.5: {1: 18.1, 0: 18.0}, 7: {1: 18.7, 0: 18.5}, 7.5: {1: 19.2, 0: 19.0},
+        8: {1: 19.7, 0: 19.4}, 8.5: {1: 20.3, 0: 19.9}, 9: {1: 20.8, 0: 20.4}, 9.5: {1: 21.4, 0: 21.0},
+        10: {1: 21.9, 0: 21.5}, 10.5: {1: 22.5, 0: 22.1}, 11: {1: 23.0, 0: 22.7}, 11.5: {1: 23.6, 0: 23.3},
+        12: {1: 24.1, 0: 23.9}, 12.5: {1: 24.7, 0: 24.5}, 13: {1: 25.2, 0: 25.6}, 13.5: {1: 25.7, 0: 25.6},
+        14: {1: 26.1, 0: 25.9}, 14.5: {1: 26.4, 0: 26.3}, 15: {1: 26.6, 0: 26.6}, 15.5: {1: 26.9, 0: 26.9},
+        16: {1: 27.1, 0: 27.1}, 16.5: {1: 27.4, 0: 27.4}, 17: {1: 27.6, 0: 27.6}, 17.5: {1: 27.8, 0: 27.8},
+        18: {1: 28.0, 0: 28.0} # 18岁及以上统一使用28.0，不区分性别
+    }
+
+    age_group = next((a for a in sorted(thresholds.keys()) if a <= age < a + 0.5), None)
+    
+    if age >= 18:
+        threshold = 28.0
+    elif age_group is not None:
+        threshold = thresholds[age_group].get(gender_code, 28.0) # 默认值以防万一
+    else:
+        # 处理 age < 6 或其他未覆盖的年龄
+        # 实际应用中，如果数据范围确定，可以忽略此分支
+        if bmi >= 24.0: # 使用成人超重标准作为默认安全检查
+            return 1
+        return 0
+
+    if bmi >= threshold:
+        return 1
+        
     return 0
 
-# --- 自定义CSS样式 (美化和精简) ---
+# --- 自定义CSS样式 (保留上次优化后的样式) ---
 st.markdown("""
 <style>
     /* 主标题样式 */
     .main-header {
-        font-size: 2.5rem; /* 稍微缩小主标题 */
+        font-size: 2.5rem; 
         color: #1f77b4;
         text-align: center;
         margin-bottom: 1.5rem;
-        font-weight: 800; /* 加粗 */
+        font-weight: 800;
     }
     /* 副标题/模块标题样式 */
     .sub-header {
         font-size: 1.4rem; 
         color: #2e86ab;
-        border-bottom: 3px solid #1f77b4; /* 强调下划线 */
+        border-bottom: 3px solid #1f77b4;
         padding-bottom: 0.3rem;
         margin-top: 2rem;
         margin-bottom: 1rem;
@@ -193,7 +106,7 @@ st.markdown("""
     /* 侧边栏标题样式 */
     .sidebar-header {
         font-size: 1.6rem;
-        color: #ffffff; /* 侧边栏标题改为白色，与背景更协调 */
+        color: #ffffff; 
         text-align: center;
         margin-bottom: 1.5rem;
         font-weight: bold;
@@ -201,23 +114,23 @@ st.markdown("""
     /* 预测结果框样式 */
     .prediction-box {
         padding: 1.5rem;
-        border-radius: 12px; /* 更圆润的边角 */
+        border-radius: 12px;
         margin: 1rem 0;
-        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15); /* 更有层次感的阴影 */
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
     }
     /* 高风险结果样式 */
     .high-risk {
-        background-color: #fce4ec; /* 浅粉色 */
-        border-left: 6px solid #e91e63; /* 醒目的红色边框 */
+        background-color: #fce4ec; 
+        border-left: 6px solid #e91e63; 
     }
     /* 低风险结果样式 */
     .low-risk {
-        background-color: #e8f5e9; /* 浅绿色 */
-        border-left: 6px solid #4caf50; /* 绿色边框 */
+        background-color: #e8f5e9; 
+        border-left: 6px solid #4caf50; 
     }
     /* 建议框样式 */
     .advice-box {
-        background-color: #e3f2fd; /* 浅蓝色背景 */
+        background-color: #e3f2fd; 
         padding: 1.2rem;
         border-radius: 12px;
         border: 1px solid #90caf9;
@@ -226,26 +139,26 @@ st.markdown("""
     /* 侧边栏按钮样式 */
     .stButton>button {
         width: 100%;
-        border-radius: 8px; /* 按钮更圆润 */
-        height: 3.5em; /* 按钮更高 */
+        border-radius: 8px; 
+        height: 3.5em; 
         font-size: 1.2rem;
         background-color: #1f77b4;
         color: white;
-        transition: background-color 0.3s; /* 增加过渡效果 */
+        transition: background-color 0.3s; 
     }
     .stButton>button:hover {
-        background-color: #0d47a1; /* 鼠标悬停时颜色变深 */
+        background-color: #0d47a1; 
     }
     /* Streamlit sidebar background color (for better look) */
     [data-testid="stSidebar"] {
-        background-color: #1f77b4; /* 侧边栏深蓝色背景 */
+        background-color: #1f77b4; 
     }
     [data-testid="stSidebar"] .stSelectbox label, 
     [data-testid="stSidebar"] .stNumberInput label {
-        color: white !important; /* 侧边栏标签文字颜色 */
+        color: white !important; 
     }
     [data-testid="stSidebar"] .stMetric {
-        background-color: #0d47a1; /* 侧边栏指标背景 */
+        background-color: #0d47a1; 
         border-radius: 8px;
         padding: 10px;
         color: white;
@@ -313,13 +226,14 @@ with st.sidebar:
 
     st.markdown("---") # 分隔线
     
-    # 预测按钮放在侧边栏底部，保持与数据输入的强关联
+    # 预测按钮逻辑
     if st.button("开始预测", type="primary"):
         # 将输入数据存储在 session state 中，供主内容区使用
         st.session_state['run_prediction'] = True
+        # 注意：这里我们收集的特征必须与训练模型时的特征顺序和数量一致
         st.session_state['features'] = [GENDER, baseline_obesity, D2, AGE, D1, D9, HU, D11, PEC, FrFF, D17, DVT, FF, D3, PPP]
     else:
-        # 初始状态或未点击按钮时，不运行预测
+        # 确保初始状态为 False
         if 'run_prediction' not in st.session_state:
              st.session_state['run_prediction'] = False
 
@@ -332,16 +246,22 @@ chart_placeholder = st.empty() # 占位符，用于显示图表
 # 只有在点击按钮后，并且 session state 中有数据时才进行预测
 if st.session_state.get('run_prediction', False):
     
-    # 使用占位符显示预测过程，增加用户体验
     with prediction_placeholder.container():
         st.info("正在分析数据，请稍候...")
     
     try:
         features = st.session_state['features']
-        features_array = np.array([features])
+        
+        # **【核心修复点 1】强制将特征数组转换为整数类型 (np.int64) **
+        # 这确保了 CatBoost 能够正确处理输入，避免索引错误。
+        features_array = np.array([features], dtype=np.int64)
         
         # 预测
-        predicted_class = model.predict(features_array)[0]
+        predicted_class_raw = model.predict(features_array)[0]
+        
+        # **【核心修复点 2】确保预测类别是标准的 Python 整数**
+        predicted_class = int(predicted_class_raw)
+        
         predicted_proba = model.predict_proba(features_array)[0]
         
         # 清除加载提示，显示结果
@@ -349,6 +269,7 @@ if st.session_state.get('run_prediction', False):
 
         # 显示预测结果
         with prediction_placeholder.container():
+            # **【核心修复点 3】使用确保为整数的 predicted_class 作为索引**
             probability = predicted_proba[predicted_class] * 100
             
             if predicted_class == 1:
@@ -387,11 +308,10 @@ if st.session_state.get('run_prediction', False):
         with chart_placeholder.container():
             st.markdown('<p class="sub-header">📊 风险概率分布图</p>', unsafe_allow_html=True)
             
-            # 使用 Matplotlib 绘图，保持与原代码一致
             fig, ax = plt.subplots(figsize=(8, 4))
             categories = ['非肥胖', '肥胖']
             probabilities = [predicted_proba[0], predicted_proba[1]]
-            colors = ['#4caf50', '#e91e63'] # 使用与结果框一致的颜色
+            colors = ['#4caf50', '#e91e63'] 
             
             bars = ax.barh(categories, probabilities, color=colors, alpha=0.9)
             ax.set_xlim(0, 1)
@@ -413,18 +333,10 @@ if st.session_state.get('run_prediction', False):
             
     except Exception as e:
         prediction_placeholder.empty()
-        st.error(f"预测过程中出现错误，请检查模型文件或数据输入: {str(e)}")
+        # 显示更详细的错误信息
+        st.error(f"预测过程中出现错误，请检查模型文件或数据输入: {e}")
         # 清除 session state 避免无限循环
         st.session_state['run_prediction'] = False
-
-# 页脚
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: #6c757d; font-size: 0.9rem;'>"
-    "学生肥胖风险预测系统 © 2024 | 机器学习辅助分析"
-    "</div>",
-    unsafe_allow_html=True
-)
 
 # 默认主内容区显示 (未点击预测按钮时)
 if not st.session_state.get('run_prediction', False):
