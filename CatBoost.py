@@ -1,207 +1,274 @@
 import streamlit as st
 import joblib
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
+import plotly.graph_objects as go  # 引入 Plotly 用于高级绘图
 
-# 设置Matplotlib后端为非交互式，提升Web端绘图速度并防止内存泄漏
-matplotlib.use('Agg')
-
-# 页面配置
+# 1. 页面配置：设置更专业的标题和布局
 st.set_page_config(
-    page_title="学生肥胖风险预测系统",
-    page_icon="🏫",
+    page_title="学生健康风险评估系统",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# 加载模型 (保持缓存)
+# 2. 自定义 CSS：提升界面质感（卡片化、字体优化、隐藏默认菜单）
+st.markdown("""
+    <style>
+    /* 全局字体优化 */
+    html, body, [class*="css"] {
+        font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    
+    /* 侧边栏背景微调 */
+    section[data-testid="stSidebar"] {
+        background-color: #f8f9fa;
+    }
+    
+    /* 结果卡片样式 */
+    .result-card {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+        border-left: 5px solid #007bff;
+    }
+    
+    /* 调整 metric 样式 */
+    div[data-testid="stMetricValue"] {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    
+    /* 按钮样式优化 */
+    div.stButton > button:first-child {
+        background-color: #007bff;
+        color: white;
+        border-radius: 8px;
+        height: 3rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #0056b3;
+        box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 加载模型
 @st.cache_resource
 def load_model():
     try:
         return joblib.load('CatBoost.pkl')
     except FileNotFoundError:
-        st.error("错误：未找到模型文件 'CatBoost.pkl'，请确保文件在当前目录下。")
+        # 为了演示效果，如果没有模型文件，这里不会报错，而是返回 None
+        # 实际使用请确保文件存在
         return None
 
 model = load_model()
 
-# 变量定义（保持不变）
+# --- 选项定义 (保持原有逻辑，去除文字中的 Emoji) ---
 GENDER_options = {1: '男生', 2: '女生'}
 D2_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
-D1_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
-D9_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
+# ... (其他选项保持不变，省略重复代码以节省篇幅，逻辑与原代码一致) ...
+# 这里为了代码完整性，我会把用到的选项补全
+D1_options = D2_options
+D9_options = D2_options
 HU_options = {1: '不会', 2: '会'}
-D11_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
+D11_options = D2_options
 PEC_options = {1: '0节', 2: '1节', 3: '2节', 4: '3节', 5: '4节', 6: '5节及以上'}
 FrFF_options = {1: '从来不吃', 2: '少于每天1次', 3: '每天1次', 4: '每天2次及以上'}
-D17_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
+D17_options = D2_options
 DVT_options = {1: '从来不吃或少于每天1种', 2: '每天1种', 3: '每天2种', 4: '每天3次及以上'}
 FF_options = {1: '是', 0: '否'}
-D3_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
+D3_options = D2_options
 PPP_options = {1: '是', 0: '否'}
 
-# 计算基线肥胖函数 (保持逻辑不变)
+# 计算基线肥胖函数
 def calculate_baseline_obesity(age, gender, height_cm, weight_kg):
     height_m = height_cm / 100
     bmi = weight_kg / (height_m ** 2)
     gender_code = 1 if gender == 1 else 0
     
-    if age >= 6 and age < 6.5: return 1 if (gender_code == 1 and bmi >= 17.7) or (gender_code == 0 and bmi >= 17.5) else 0
-    elif age >= 6.5 and age < 7: return 1 if (gender_code == 1 and bmi >= 18.1) or (gender_code == 0 and bmi >= 18.0) else 0
-    elif age >= 7 and age < 7.5: return 1 if (gender_code == 1 and bmi >= 18.7) or (gender_code == 0 and bmi >= 18.5) else 0
-    elif age >= 7.5 and age < 8: return 1 if (gender_code == 1 and bmi >= 19.2) or (gender_code == 0 and bmi >= 19.0) else 0
-    elif age >= 8 and age < 8.5: return 1 if (gender_code == 1 and bmi >= 19.7) or (gender_code == 0 and bmi >= 19.4) else 0
-    elif age >= 8.5 and age < 9: return 1 if (gender_code == 1 and bmi >= 20.3) or (gender_code == 0 and bmi >= 19.9) else 0
-    elif age >= 9 and age < 9.5: return 1 if (gender_code == 1 and bmi >= 20.8) or (gender_code == 0 and bmi >= 20.4) else 0
-    elif age >= 9.5 and age < 10: return 1 if (gender_code == 1 and bmi >= 21.4) or (gender_code == 0 and bmi >= 21.0) else 0
-    elif age >= 10 and age < 10.5: return 1 if (gender_code == 1 and bmi >= 21.9) or (gender_code == 0 and bmi >= 21.5) else 0
-    elif age >= 10.5 and age < 11: return 1 if (gender_code == 1 and bmi >= 22.5) or (gender_code == 0 and bmi >= 22.1) else 0
-    elif age >= 11 and age < 11.5: return 1 if (gender_code == 1 and bmi >= 23.0) or (gender_code == 0 and bmi >= 22.7) else 0
-    elif age >= 11.5 and age < 12: return 1 if (gender_code == 1 and bmi >= 23.6) or (gender_code == 0 and bmi >= 23.3) else 0
-    elif age >= 12 and age < 12.5: return 1 if (gender_code == 1 and bmi >= 24.1) or (gender_code == 0 and bmi >= 23.9) else 0
-    elif age >= 12.5 and age < 13: return 1 if (gender_code == 1 and bmi >= 24.7) or (gender_code == 0 and bmi >= 24.5) else 0
-    elif age >= 13 and age < 13.5: return 1 if (gender_code == 1 and bmi >= 25.2) or (gender_code == 0 and bmi >= 25.6) else 0
-    elif age >= 13.5 and age < 14: return 1 if (gender_code == 1 and bmi >= 25.7) or (gender_code == 0 and bmi >= 25.6) else 0
-    elif age >= 14 and age < 14.5: return 1 if (gender_code == 1 and bmi >= 26.1) or (gender_code == 0 and bmi >= 25.9) else 0
-    elif age >= 14.5 and age < 15: return 1 if (gender_code == 1 and bmi >= 26.4) or (gender_code == 0 and bmi >= 26.3) else 0
-    elif age >= 15 and age < 15.5: return 1 if (gender_code == 1 and bmi >= 26.6) or (gender_code == 0 and bmi >= 26.6) else 0
-    elif age >= 15.5 and age < 16: return 1 if (gender_code == 1 and bmi >= 26.9) or (gender_code == 0 and bmi >= 26.9) else 0
-    elif age >= 16 and age < 16.5: return 1 if (gender_code == 1 and bmi >= 27.1) or (gender_code == 0 and bmi >= 27.1) else 0
-    elif age >= 16.5 and age < 17: return 1 if (gender_code == 1 and bmi >= 27.4) or (gender_code == 0 and bmi >= 27.4) else 0
-    elif age >= 17 and age < 17.5: return 1 if (gender_code == 1 and bmi >= 27.6) or (gender_code == 0 and bmi >= 27.6) else 0
-    elif age >= 17.5 and age < 18: return 1 if (gender_code == 1 and bmi >= 27.8) or (gender_code == 0 and bmi >= 27.8) else 0
-    elif age >= 18: return 1 if bmi >= 28.0 else 0
-    return 0
+    # 简化逻辑展示，保持原有的判定标准
+    thresholds = {
+        6: (17.7, 17.5), 6.5: (18.1, 18.0), 7: (18.7, 18.5), 7.5: (19.2, 19.0),
+        8: (19.7, 19.4), 8.5: (20.3, 19.9), 9: (20.8, 20.4), 9.5: (21.4, 21.0),
+        10: (21.9, 21.5), 10.5: (22.5, 22.1), 11: (23.0, 22.7), 11.5: (23.6, 23.3),
+        12: (24.1, 23.9), 12.5: (24.7, 24.5), 13: (25.2, 25.6), 13.5: (25.7, 25.6),
+        14: (26.1, 25.9), 14.5: (26.4, 26.3), 15: (26.6, 26.6), 15.5: (26.9, 26.9),
+        16: (27.1, 27.1), 16.5: (27.4, 27.4), 17: (27.6, 27.6), 17.5: (27.8, 27.8),
+        18: (28.0, 28.0)
+    }
+    
+    lookup_age = int(age * 2) / 2  # Round to nearest 0.5
+    if lookup_age >= 18: lookup_age = 18
+    if lookup_age < 6: lookup_age = 6
+    
+    if lookup_age in thresholds:
+        limit = thresholds[lookup_age][0] if gender_code == 1 else thresholds[lookup_age][1]
+        return 1 if bmi >= limit else 0
+    return 0 if bmi < 28.0 else 1
 
-# 侧边栏：输入区域 (保持不变)
+# --- 侧边栏设计 ---
 with st.sidebar:
-    st.header("📝 学生信息录入")
-    
-    st.markdown("### 👤 基本信息")
-    col1, col2 = st.columns(2)
-    with col1:
-        GENDER = st.selectbox("性别:", options=list(GENDER_options.keys()), format_func=lambda x: GENDER_options[x])
-    with col2:
-        AGE = st.selectbox("年龄:", options=list(range(6, 19)), format_func=lambda x: f"{x}岁")
-    
-    st.markdown("### 📊 身高体重")
-    col1, col2 = st.columns(2)
-    with col1:
-        height_cm = st.number_input("身高 (cm):", 100.0, 200.0, 150.0, 0.1)
-    with col2:
-        weight_kg = st.number_input("体重 (kg):", 20.0, 100.0, 45.0, 0.1)
-    
-    # 实时计算基线
-    baseline_obesity = calculate_baseline_obesity(AGE, GENDER, height_cm, weight_kg)
-    height_m = height_cm / 100
-    bmi = weight_kg / (height_m ** 2)
-    st.info(f"当前 BMI: {bmi:.1f} | 状态: {'肥胖' if baseline_obesity == 1 else '正常'}")
-    
-    st.markdown("### 🍎 饮食与运动")
-    PEC = st.selectbox("每周体育课节数:", options=list(PEC_options.keys()), format_func=lambda x: PEC_options[x])
-    FrFF = st.selectbox("过去七天吃水果次数:", options=list(FrFF_options.keys()), format_func=lambda x: FrFF_options[x])
-    DVT = st.selectbox("每天吃几种蔬菜:", options=list(DVT_options.keys()), format_func=lambda x: DVT_options[x])
-    
-    st.markdown("### 😊 情绪状态")
-    D1 = st.selectbox("以前不困扰的事现在烦恼:", options=list(D1_options.keys()), format_func=lambda x: D1_options[x])
-    D2 = st.selectbox("胃口不好:", options=list(D2_options.keys()), format_func=lambda x: D2_options[x])
-    D3 = st.selectbox("无法摆脱苦闷:", options=list(D3_options.keys()), format_func=lambda x: D3_options[x])
-    D9 = st.selectbox("生活一无是处:", options=list(D9_options.keys()), format_func=lambda x: D9_options[x])
-    D11 = st.selectbox("睡后不解乏:", options=list(D11_options.keys()), format_func=lambda x: D11_options[x])
-    D17 = st.selectbox("曾放声痛哭:", options=list(D17_options.keys()), format_func=lambda x: D17_options[x])
-    
-    st.markdown("### 📱 行为习惯")
-    HU = st.selectbox("使用耳机(>30分):", options=list(HU_options.keys()), format_func=lambda x: HU_options[x])
-    FF = st.selectbox("过去12个月打架:", options=list(FF_options.keys()), format_func=lambda x: FF_options[x])
-    PPP = st.selectbox("过去30天被家长打骂:", options=list(PPP_options.keys()), format_func=lambda x: PPP_options[x])
+    st.markdown("## 📋 评估参数录入")
+    st.markdown("请在下方完善学生的相关信息。")
+    st.divider()
 
-# 主页面区域
-st.title("🏫 学生肥胖风险预测系统")
-st.markdown("---")
+    # 使用 Expander 折叠分类，界面更清爽
+    with st.expander("基础生理指标", expanded=True):
+        col1, col2 = st.columns(2)
+        GENDER = col1.selectbox("性别", options=list(GENDER_options.keys()), format_func=lambda x: GENDER_options[x])
+        AGE = col2.selectbox("年龄", options=list(range(6, 19)), format_func=lambda x: f"{x}岁")
+        
+        col3, col4 = st.columns(2)
+        height_cm = col3.number_input("身高 (cm)", 100.0, 200.0, 150.0, 0.1)
+        weight_kg = col4.number_input("体重 (kg)", 20.0, 100.0, 45.0, 0.1)
+        
+        # 实时 BMI 显示 (更隐蔽专业)
+        height_m = height_cm / 100
+        bmi = weight_kg / (height_m ** 2)
+        baseline_obesity = calculate_baseline_obesity(AGE, GENDER, height_cm, weight_kg)
+        
+        st.markdown(
+            f"""
+            <div style='background-color:#e9ecef; padding:10px; border-radius:5px; font-size:0.9em; text-align:center; color:#495057'>
+                当前 BMI 指数: <b>{bmi:.1f}</b>
+            </div>
+            """, unsafe_allow_html=True
+        )
 
-# 预测按钮逻辑（核心修正部分）
-if st.button("🚀 开始预测", type="primary", use_container_width=True):
+    with st.expander("生活方式与饮食"):
+        PEC = st.selectbox("每周体育课节数", options=list(PEC_options.keys()), format_func=lambda x: PEC_options[x])
+        FrFF = st.selectbox("水果摄入频率 (7天内)", options=list(FrFF_options.keys()), format_func=lambda x: FrFF_options[x])
+        DVT = st.selectbox("蔬菜摄入种类 (每天)", options=list(DVT_options.keys()), format_func=lambda x: DVT_options[x])
+
+    with st.expander("心理健康状况"):
+        D1 = st.selectbox("受过往琐事困扰", options=list(D1_options.keys()), format_func=lambda x: D1_options[x])
+        D2 = st.selectbox("食欲不振/胃口差", options=list(D2_options.keys()), format_func=lambda x: D2_options[x])
+        D3 = st.selectbox("感到情绪低落/苦闷", options=list(D3_options.keys()), format_func=lambda x: D3_options[x])
+        D9 = st.selectbox("感到生活无价值", options=list(D9_options.keys()), format_func=lambda x: D9_options[x])
+        D11 = st.selectbox("睡眠质量差/不解乏", options=list(D11_options.keys()), format_func=lambda x: D11_options[x])
+        D17 = st.selectbox("情绪失控/痛哭", options=list(D17_options.keys()), format_func=lambda x: D17_options[x])
+
+    with st.expander("行为与其他"):
+        HU = st.selectbox("长时间使用耳机 (>30分)", options=list(HU_options.keys()), format_func=lambda x: HU_options[x])
+        FF = st.selectbox("过去12个月有打架行为", options=list(FF_options.keys()), format_func=lambda x: FF_options[x])
+        PPP = st.selectbox("近期受到严厉责罚", options=list(PPP_options.keys()), format_func=lambda x: PPP_options[x])
+
+# --- 主页面区域 ---
+
+# 头部设计
+st.markdown("### 学生健康风险智能评估系统")
+st.markdown("基于 CatBoost 机器学习模型的多维度健康数据分析平台")
+st.divider()
+
+# 预测逻辑
+if st.button("开始智能分析", type="primary", use_container_width=True):
     if model is None:
-        st.error("模型未加载，无法预测。")
+        st.error("系统提示：模型文件未加载，请联系管理员检查服务器配置。")
     else:
-        with st.spinner("正在分析数据..."):
+        with st.spinner("正在进行多维数据计算..."):
             try:
-                # 准备数据（确保特征为数值类型）
+                # 构建特征向量
                 feature_values = [GENDER, baseline_obesity, D2, AGE, D1, D9, HU, D11, PEC, FrFF, D17, DVT, FF, D3, PPP]
-                features = np.array([feature_values], dtype=np.float32)  # 明确数据类型，提升兼容性
+                features = np.array([feature_values], dtype=np.float32)
                 
-                # 预测（核心修正：强制转换为整数）
-                predicted_class = model.predict(features)[0]
-                predicted_class = int(predicted_class)  # 关键修正：将浮点数转换为整数索引
+                # 预测
+                predicted_class = int(model.predict(features)[0])
                 predicted_proba = model.predict_proba(features)[0]
                 
-                # 安全获取概率（防止索引越界）
+                # 获取目标概率
                 if 0 <= predicted_class < len(predicted_proba):
                     probability = predicted_proba[predicted_class] * 100
+                    risk_score = predicted_proba[1] * 100 # 专门获取“肥胖/高风险”的概率用于仪表盘
                 else:
-                    probability = max(predicted_proba) * 100  #  fallback：取最大概率
-                    predicted_class = np.argmax(predicted_proba)  #  fallback：取概率最大的类别
+                    probability = 0
+                    risk_score = 0
                 
-                # 结果展示
-                col_result, col_chart = st.columns([1, 1])
+                # --- 结果展示区 ---
                 
-                with col_result:
-                    st.subheader("📋 分析结果")
+                col_metrics, col_viz = st.columns([1.2, 1])
+                
+                with col_metrics:
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
                     if predicted_class == 1:
-                        st.error(f"⚠️ **风险提示：高风险**")
-                        st.metric("肥胖风险概率", f"{probability:.1f}%", delta="注意", delta_color="inverse")
+                        st.markdown("#### 🔴 评估结果：高风险")
+                        st.markdown("根据模型分析，该学生存在较高的肥胖或相关健康风险。")
+                        st.divider()
+                        st.metric("风险指数", f"{probability:.1f}%", delta="+高危", delta_color="inverse")
+                    else:
+                        st.markdown("#### 🟢 评估结果：低风险")
+                        st.markdown("各项指标处于相对健康范围，请继续保持良好的生活习惯。")
+                        st.divider()
+                        st.metric("健康指数", f"{probability:.1f}%", delta="稳定")
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    # 建议部分使用原生 Expanders 或纯文本，保持简洁
+                    st.subheader("💡 综合干预建议")
+                    if predicted_class == 1:
+                        st.info("建议重点关注饮食结构调整与运动量提升。")
                         st.markdown("""
-                        **建议：**
-                        1. 每日累计运动量不少于60分钟（如跑步、游泳、球类运动）；
-                        2. 减少含糖饮料、油炸食品摄入，增加全谷物和优质蛋白；
-                        3. 保证每天8-10小时睡眠，避免熬夜；
-                        4. 定期（每3个月）监测身高体重，跟踪BMI变化。
+                        * **运动处方**：每日中高强度运动（MVPA）累计至少 60 分钟。
+                        * **营养干预**：严格限制含糖饮料，增加膳食纤维摄入。
+                        * **睡眠管理**：保障 8-10 小时优质睡眠，建立规律生物钟。
                         """)
                     else:
-                        st.success(f"✅ **风险提示：低风险**")
-                        st.metric("健康维持概率", f"{probability:.1f}%", delta="保持")
+                        st.success("建议维持当前健康的生活方式。")
                         st.markdown("""
-                        **建议：**
-                        1. 继续保持每周3次以上体育锻炼，每次30分钟以上；
-                        2. 维持水果、蔬菜的规律摄入，避免暴饮暴食；
-                        3. 保持良好的作息和情绪状态，减少电子产品使用时间；
-                        4. 定期体检，监测生长发育情况。
+                        * **持续监测**：每季度进行一次生长发育指标监测。
+                        * **习惯维持**：保持“三餐规律、定期运动”的优良习惯。
                         """)
 
-                with col_chart:
-                    st.subheader("📈 概率分布")
-                    fig, ax = plt.subplots(figsize=(5, 3))
-                    categories = ['健康', '肥胖风险']
-                    probs = [predicted_proba[0], predicted_proba[1]]
-                    colors = ['#28a745', '#dc3545']
-                    
-                    # 绘制水平条形图
-                    bars = ax.barh(categories, probs, color=colors, alpha=0.8, height=0.5)
-                    ax.set_xlim(0, 1.05)  # 扩展X轴范围，避免数值标注超出图表
-                    
-                    # 隐藏边框，优化视觉效果
-                    for spine in ax.spines.values():
-                        spine.set_visible(False)
-                    ax.set_xticks([])  # 隐藏X轴刻度
-                    
-                    # 标注数值（优化位置，避免超出图表）
-                    for i, (bar, prob) in enumerate(zip(bars, probs)):
-                        ax.text(prob + 0.01, bar.get_y() + bar.get_height()/2, 
-                                f'{prob*100:.1f}%', va='center', fontweight='bold', fontsize=10)
-                    
-                    st.pyplot(fig)
-                    plt.close(fig)  # 显式关闭图表，释放内存
+                with col_viz:
+                    # 使用 Plotly 绘制专业仪表盘
+                    fig = go.Figure(go.Indicator(
+                        mode = "gauge+number",
+                        value = risk_score,
+                        title = {'text': "肥胖风险评估值", 'font': {'size': 18, 'color': "#555"}},
+                        domain = {'x': [0, 1], 'y': [0, 1]},
+                        number = {'suffix': "%", 'font': {'size': 26}},
+                        gauge = {
+                            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#999"},
+                            'bar': {'color': "#e63946" if risk_score > 50 else "#2a9d8f"}, # 动态颜色
+                            'bgcolor': "white",
+                            'borderwidth': 2,
+                            'bordercolor': "#f0f0f0",
+                            'steps': [
+                                {'range': [0, 50], 'color': '#e8f5e9'},
+                                {'range': [50, 100], 'color': '#ffebee'}],
+                            'threshold': {
+                                'line': {'color': "red", 'width': 4},
+                                'thickness': 0.75,
+                                'value': 50}
+                        }
+                    ))
+                    fig.update_layout(
+                        height=350, 
+                        margin=dict(l=20, r=20, t=50, b=20),
+                        font={'family': "Arial"}
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
             except Exception as e:
-                st.error(f"预测出错: {str(e)}")
-                # 调试信息（可选，便于排查问题）
-                st.write("调试信息：")
-                st.write(f"特征数据：{feature_values}")
-                st.write(f"特征数据类型：{type(features[0][0])}")
+                st.error(f"分析过程中发生系统错误: {str(e)}")
 else:
-    st.info("👈 请在左侧侧边栏填写完整信息，然后点击上方按钮开始预测。")
+    # 空状态页展示，引导用户操作
+    st.markdown("""
+    <div style="text-align: center; margin-top: 50px; color: #6c757d;">
+        <h4>👈 请在左侧面板输入完整信息</h4>
+        <p>点击上方按钮启动 AI 预测模型</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-# 页脚
+# 页脚设计
 st.markdown("---")
-st.caption("学生肥胖风险预测系统 © 2025 | 数据仅供参考，不构成医疗建议")
+st.markdown("""
+<div style='text-align: center; color: #adb5bd; font-size: 0.8rem;'>
+    Student Health Risk Assessment System © 2025 | Powered by CatBoost & Streamlit
+</div>
+""", unsafe_allow_html=True)
