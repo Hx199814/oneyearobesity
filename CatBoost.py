@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 
-# 【优化1】设置Matplotlib后端为非交互式，提升Web端绘图速度并防止内存泄漏
+# 设置Matplotlib后端为非交互式，提升Web端绘图速度并防止内存泄漏
 matplotlib.use('Agg')
 
 # 页面配置
@@ -26,7 +26,7 @@ def load_model():
 
 model = load_model()
 
-# --- 保持原有变量定义不变 ---
+# 变量定义（保持不变）
 GENDER_options = {1: '男生', 2: '女生'}
 D2_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
 D1_options = {1: '没有或偶尔', 2: '有时', 3: '时常或一半时间', 4: '多数时间或持续', 5: '不清楚'}
@@ -47,7 +47,6 @@ def calculate_baseline_obesity(age, gender, height_cm, weight_kg):
     bmi = weight_kg / (height_m ** 2)
     gender_code = 1 if gender == 1 else 0
     
-    # 逻辑判断保持原样，仅做结构折叠以节省视觉空间
     if age >= 6 and age < 6.5: return 1 if (gender_code == 1 and bmi >= 17.7) or (gender_code == 0 and bmi >= 17.5) else 0
     elif age >= 6.5 and age < 7: return 1 if (gender_code == 1 and bmi >= 18.1) or (gender_code == 0 and bmi >= 18.0) else 0
     elif age >= 7 and age < 7.5: return 1 if (gender_code == 1 and bmi >= 18.7) or (gender_code == 0 and bmi >= 18.5) else 0
@@ -75,7 +74,7 @@ def calculate_baseline_obesity(age, gender, height_cm, weight_kg):
     elif age >= 18: return 1 if bmi >= 28.0 else 0
     return 0
 
-# --- 侧边栏：输入区域 (保持不变) ---
+# 侧边栏：输入区域 (保持不变)
 with st.sidebar:
     st.header("📝 学生信息录入")
     
@@ -93,13 +92,11 @@ with st.sidebar:
     with col2:
         weight_kg = st.number_input("体重 (kg):", 20.0, 100.0, 45.0, 0.1)
     
-    # 实时计算基线 (计算极快，不影响性能)
+    # 实时计算基线
     baseline_obesity = calculate_baseline_obesity(AGE, GENDER, height_cm, weight_kg)
     height_m = height_cm / 100
     bmi = weight_kg / (height_m ** 2)
-    
-    # 使用原生组件展示状态
-    st.info(f"当前 BMI: {bmi:.1f} | 基线状态: {'肥胖' if baseline_obesity == 1 else '正常'}")
+    st.info(f"当前 BMI: {bmi:.1f} | 状态: {'肥胖' if baseline_obesity == 1 else '正常'}")
     
     st.markdown("### 🍎 饮食与运动")
     PEC = st.selectbox("每周体育课节数:", options=list(PEC_options.keys()), format_func=lambda x: PEC_options[x])
@@ -119,27 +116,34 @@ with st.sidebar:
     FF = st.selectbox("过去12个月打架:", options=list(FF_options.keys()), format_func=lambda x: FF_options[x])
     PPP = st.selectbox("过去30天被家长打骂:", options=list(PPP_options.keys()), format_func=lambda x: PPP_options[x])
 
-# --- 主页面区域 (优化后) ---
+# 主页面区域
 st.title("🏫 学生肥胖风险预测系统")
 st.markdown("---")
 
-# 预测按钮逻辑
+# 预测按钮逻辑（核心修正部分）
 if st.button("🚀 开始预测", type="primary", use_container_width=True):
     if model is None:
         st.error("模型未加载，无法预测。")
     else:
         with st.spinner("正在分析数据..."):
             try:
-                # 准备数据
+                # 准备数据（确保特征为数值类型）
                 feature_values = [GENDER, baseline_obesity, D2, AGE, D1, D9, HU, D11, PEC, FrFF, D17, DVT, FF, D3, PPP]
-                features = np.array([feature_values])
+                features = np.array([feature_values], dtype=np.float32)  # 明确数据类型，提升兼容性
                 
-                # 预测
-                predicted_class = model.predict(features)[0] 
+                # 预测（核心修正：强制转换为整数）
+                predicted_class = model.predict(features)[0]
+                predicted_class = int(predicted_class)  # 关键修正：将浮点数转换为整数索引
                 predicted_proba = model.predict_proba(features)[0]
-                probability = predicted_proba[predicted_class] * 100
                 
-                # 【优化2】使用原生容器布局，更轻量
+                # 安全获取概率（防止索引越界）
+                if 0 <= predicted_class < len(predicted_proba):
+                    probability = predicted_proba[predicted_class] * 100
+                else:
+                    probability = max(predicted_proba) * 100  #  fallback：取最大概率
+                    predicted_class = np.argmax(predicted_proba)  #  fallback：取概率最大的类别
+                
+                # 结果展示
                 col_result, col_chart = st.columns([1, 1])
                 
                 with col_result:
@@ -147,40 +151,57 @@ if st.button("🚀 开始预测", type="primary", use_container_width=True):
                     if predicted_class == 1:
                         st.error(f"⚠️ **风险提示：高风险**")
                         st.metric("肥胖风险概率", f"{probability:.1f}%", delta="注意", delta_color="inverse")
-                        st.markdown("**建议：** 增加每日运动量至60分钟，严格控制糖分摄入，并保证充足睡眠。")
+                        st.markdown("""
+                        **建议：**
+                        1. 每日累计运动量不少于60分钟（如跑步、游泳、球类运动）；
+                        2. 减少含糖饮料、油炸食品摄入，增加全谷物和优质蛋白；
+                        3. 保证每天8-10小时睡眠，避免熬夜；
+                        4. 定期（每3个月）监测身高体重，跟踪BMI变化。
+                        """)
                     else:
                         st.success(f"✅ **风险提示：低风险**")
                         st.metric("健康维持概率", f"{probability:.1f}%", delta="保持")
-                        st.markdown("**建议：** 继续保持目前的饮食和运动习惯，定期监测身高体重。")
+                        st.markdown("""
+                        **建议：**
+                        1. 继续保持每周3次以上体育锻炼，每次30分钟以上；
+                        2. 维持水果、蔬菜的规律摄入，避免暴饮暴食；
+                        3. 保持良好的作息和情绪状态，减少电子产品使用时间；
+                        4. 定期体检，监测生长发育情况。
+                        """)
 
                 with col_chart:
-                    # 【优化3】简化的绘图逻辑，避免复杂的CSS注入
                     st.subheader("📈 概率分布")
                     fig, ax = plt.subplots(figsize=(5, 3))
                     categories = ['健康', '肥胖风险']
                     probs = [predicted_proba[0], predicted_proba[1]]
                     colors = ['#28a745', '#dc3545']
                     
-                    ax.barh(categories, probs, color=colors, alpha=0.8, height=0.5)
-                    ax.set_xlim(0, 1)
-                    # 隐藏边框，让图表更干净
+                    # 绘制水平条形图
+                    bars = ax.barh(categories, probs, color=colors, alpha=0.8, height=0.5)
+                    ax.set_xlim(0, 1.05)  # 扩展X轴范围，避免数值标注超出图表
+                    
+                    # 隐藏边框，优化视觉效果
                     for spine in ax.spines.values():
                         spine.set_visible(False)
-                    ax.set_xticks([]) # 隐藏X轴刻度
+                    ax.set_xticks([])  # 隐藏X轴刻度
                     
-                    # 标注数值
-                    for i, v in enumerate(probs):
-                        ax.text(v + 0.02, i, f'{v*100:.1f}%', va='center', fontweight='bold')
+                    # 标注数值（优化位置，避免超出图表）
+                    for i, (bar, prob) in enumerate(zip(bars, probs)):
+                        ax.text(prob + 0.01, bar.get_y() + bar.get_height()/2, 
+                                f'{prob*100:.1f}%', va='center', fontweight='bold', fontsize=10)
                     
                     st.pyplot(fig)
-                    plt.close(fig) # 【重要】显式关闭图表释放内存
+                    plt.close(fig)  # 显式关闭图表，释放内存
 
             except Exception as e:
                 st.error(f"预测出错: {str(e)}")
+                # 调试信息（可选，便于排查问题）
+                st.write("调试信息：")
+                st.write(f"特征数据：{feature_values}")
+                st.write(f"特征数据类型：{type(features[0][0])}")
 else:
-    # 默认状态显示
     st.info("👈 请在左侧侧边栏填写完整信息，然后点击上方按钮开始预测。")
 
-# 简单的页脚
+# 页脚
 st.markdown("---")
-st.caption("学生肥胖风险预测系统 © 2025 | 数据仅供参考")
+st.caption("学生肥胖风险预测系统 © 2025 | 数据仅供参考，不构成医疗建议")
